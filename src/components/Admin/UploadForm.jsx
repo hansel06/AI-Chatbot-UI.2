@@ -13,6 +13,7 @@ import {
   Spinner
 } from '@chakra-ui/react'
 import { motion } from 'framer-motion'
+import { useAuth } from '../../hooks/useAuth'
 
 const MotionBox = motion(Box)
 const MotionButton = motion(Button)
@@ -24,27 +25,34 @@ const UploadForm = ({ onUpload }) => {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState('success')
+  const { user } = useAuth()
   const bg = useColorModeValue('white', 'gray.800')
   const borderColor = useColorModeValue('gray.200', 'gray.600')
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0]
     if (selectedFile) {
-      const validTypes = ['application/pdf', 'text/plain', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
-      if (validTypes.includes(selectedFile.type)) {
+      if (selectedFile.type === 'application/pdf') {
         setFile(selectedFile)
+        setUrl('')
         setMessage('')
       } else {
-        setMessage('Please select a PDF, TXT, or DOCX file')
+        setMessage('Please select a PDF file')
         setMessageType('error')
         setFile(null)
       }
     }
   }
 
+  const handleUrlChange = (e) => {
+    setUrl(e.target.value)
+    setFile(null)
+    setMessage('')
+  }
+
   const handleUpload = async () => {
     if (!file && !url) {
-      setMessage('Please select a file or enter a URL')
+      setMessage('Please select a PDF file or enter a URL')
       setMessageType('error')
       return
     }
@@ -76,16 +84,23 @@ const UploadForm = ({ onUpload }) => {
       
       const uploadData = {
         id: Date.now().toString(),
-        filename: file ? file.name : new URL(url).pathname.split('/').pop() || 'webpage',
-        url: url || `mock-url-${file.name}`,
-        uploadedBy: 'admin@example.com',
+        type: file ? 'pdf' : 'url',
+        filename: file ? file.name : null,
+        fileUrl: file ? URL.createObjectURL(file) : null,
+        url: url || null,
+        uploadedBy: user?.email || 'admin@example.com',
         timestamp: new Date().toISOString()
       }
+
+      // Save to localStorage
+      const storedResources = JSON.parse(localStorage.getItem('resources') || '[]')
+      storedResources.push(uploadData)
+      localStorage.setItem('resources', JSON.stringify(storedResources))
 
       setUploadProgress(100)
       onUpload(uploadData)
       
-      setMessage(file ? 'File uploaded successfully' : 'URL added successfully')
+      setMessage(file ? 'PDF uploaded successfully' : 'URL added successfully')
       setMessageType('success')
       setFile(null)
       setUrl('')
@@ -128,7 +143,7 @@ const UploadForm = ({ onUpload }) => {
     >
       <VStack spacing={4} align="stretch">
         <Text fontSize="lg" fontWeight="bold">
-          Upload Document or Add URL
+          Upload PDF or Add URL
         </Text>
         
         {message && (
@@ -141,12 +156,12 @@ const UploadForm = ({ onUpload }) => {
         <VStack spacing={3} align="stretch">
           <Box>
             <Text fontSize="sm" mb={2} color="gray.600">
-              Upload File (PDF, TXT, DOCX)
+              Upload PDF File
             </Text>
             <Input
               id="file-input"
               type="file"
-              accept=".pdf,.txt,.docx"
+              accept=".pdf"
               onChange={handleFileChange}
               size="md"
               p={1}
@@ -169,7 +184,7 @@ const UploadForm = ({ onUpload }) => {
               type="url"
               placeholder="Enter a URL (e.g., https://example.com)"
               value={url}
-              onChange={(e) => setUrl(e.target.value)}
+              onChange={handleUrlChange}
               size="md"
               focusBorderColor="brand.500"
               disabled={isUploading}

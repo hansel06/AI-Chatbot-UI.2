@@ -1,4 +1,4 @@
-import { FiSun, FiMoon } from 'react-icons/fi' // Replace SunIcon, MoonIcon
+import { FiSun, FiMoon } from 'react-icons/fi'
 import React from 'react'
 import {
   Flex,
@@ -8,10 +8,11 @@ import {
   useColorMode,
   useColorModeValue,
   Box,
-  useBreakpointValue
+  useBreakpointValue,
+  Link
 } from '@chakra-ui/react'
 import { useAuth } from '../../hooks/useAuth'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link as RouterLink } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
 const MotionFlex = motion(Flex)
@@ -56,9 +57,24 @@ const Header = () => {
       </Text>
       
       <Flex align="center" gap={2}>
-        <Text fontSize="sm" color="gray.500" display={{ base: 'none', md: 'block' }}>
-          {user?.email}
-        </Text>
+        {user && (
+          <Text fontSize="sm" color="gray.500" display={{ base: 'none', md: 'block' }}>
+            {user.email}
+          </Text>
+        )}
+        
+        {user?.role === 'admin' && (
+          <MotionButton
+            as={RouterLink}
+            to="/admin"
+            colorScheme="blue"
+            size="sm"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            Admin Dashboard
+          </MotionButton>
+        )}
         
         <MotionIconButton
           aria-label="Toggle color mode"
@@ -70,16 +86,18 @@ const Header = () => {
           whileTap={{ scale: 0.9 }}
         />
         
-        <MotionButton
-          aria-label="Logout button"
-          colorScheme="gray"
-          size="sm"
-          onClick={handleLogout}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          Logout
-        </MotionButton>
+        {user && (
+          <MotionButton
+            aria-label="Logout button"
+            colorScheme="gray"
+            size="sm"
+            onClick={handleLogout}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            Logout
+          </MotionButton>
+        )}
       </Flex>
     </MotionFlex>
   )
