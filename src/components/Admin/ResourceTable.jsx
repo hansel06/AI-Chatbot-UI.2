@@ -1,3 +1,4 @@
+
 import { FiTrash2, FiEye, FiChevronLeft, FiChevronRight, FiMove } from 'react-icons/fi'
 import React, { useState, useMemo } from 'react'
 import {
@@ -25,10 +26,110 @@ import {
   Badge
 } from '@chakra-ui/react'
 import { motion } from 'framer-motion'
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd'
+import { DndContext, closestCenter, useSensor, useSensors, PointerSensor } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
-const MotionBox = motion(Box)
-const MotionTr = motion(Tr)
+const MotionBox = motion.create(Box)
+
+const SortableRow = ({ resource, index, handleView, handleDelete, getFileType, formatDate }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: resource.id })
+
+  const fileType = getFileType(resource)
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition: transition || 'transform 200ms ease',
+    opacity: isDragging ? 0.5 : 1,
+    background: isDragging ? useColorModeValue('white', 'gray.800') : undefined,
+    boxShadow: isDragging ? '0 4px 8px rgba(0, 0, 0, 0.2)' : 'none',
+    zIndex: isDragging ? 1000 : 'auto',
+    cursor: isDragging ? 'grabbing' : 'grab'
+  }
+
+  return (
+    <Tr ref={setNodeRef} style={style} className="draggable-row">
+      <Td {...attributes} {...listeners}>
+        <FiMove />
+      </Td>
+      <Td>
+        {resource.type === 'pdf' && resource.filename ? (
+          <Link
+            href={resource.fileUrl}
+            color="brand.500"
+            fontSize="sm"
+            onClick={(e) => {
+              e.preventDefault()
+              handleView(resource)
+            }}
+            _hover={{ textDecoration: 'underline' }}
+          >
+            {resource.filename}
+          </Link>
+        ) : (
+          <Text fontSize="sm" color="gray.500">-</Text>
+        )}
+      </Td>
+      <Td>
+        {resource.type === 'url' && resource.url ? (
+          <Link
+            href={resource.url}
+            color="brand.500"
+            fontSize="sm"
+            onClick={(e) => {
+              e.preventDefault()
+              handleView(resource)
+            }}
+            _hover={{ textDecoration: 'underline' }}
+          >
+            {resource.url}
+          </Link>
+        ) : (
+          <Text fontSize="sm" color="gray.500">-</Text>
+        )}
+      </Td>
+      <Td>
+        <Badge colorScheme={fileType.color} variant="subtle">
+          {fileType.extension}
+        </Badge>
+      </Td>
+      <Td>
+        <Text fontSize="sm">{formatDate(resource.timestamp)}</Text>
+      </Td>
+      <Td>
+        <Text fontSize="sm">{resource.uploadedBy}</Text>
+      </Td>
+      <Td>
+        <HStack spacing={2}>
+          <IconButton
+            aria-label="View resource"
+            icon={<FiEye />}
+            size="sm"
+            colorScheme="blue"
+            variant="ghost"
+            onClick={() => handleView(resource)}
+            isDisabled={!resource.fileUrl && !resource.url}
+          />
+          <IconButton
+            aria-label="Delete resource"
+            icon={<FiTrash2 />}
+            size="sm"
+            colorScheme="red"
+            variant="ghost"
+            onClick={() => handleDelete(resource)}
+          />
+        </HStack>
+      </Td>
+    </Tr>
+  )
+}
 
 const ResourceTable = ({ resources, onDeleteResource, onReorderResources }) => {
   const [searchTerm, setSearchTerm] = useState('')
@@ -39,6 +140,14 @@ const ResourceTable = ({ resources, onDeleteResource, onReorderResources }) => {
   const itemsPerPage = 10
   const bg = useColorModeValue('white', 'gray.800')
   const borderColor = useColorModeValue('gray.200', 'gray.600')
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8
+      }
+    })
+  )
 
   const filteredResources = useMemo(() => {
     return resources.filter(resource =>
@@ -92,18 +201,29 @@ const ResourceTable = ({ resources, onDeleteResource, onReorderResources }) => {
     return { extension: extension.toUpperCase(), color: colorMap[extension] || 'gray' }
   }
 
-  const handleDragEnd = (result) => {
-    if (!result.destination) return
+  const handleDragEnd = (event) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const oldIndex = resources.findIndex(resource => resource.id === active.id)
+    const newIndex = resources.findIndex(resource => resource.id === over.id)
 
     const reorderedResources = Array.from(resources)
-    const [movedResource] = reorderedResources.splice(result.source.index, 1)
-    reorderedResources.splice(result.destination.index, 0, movedResource)
+    const [movedResource] = reorderedResources.splice(oldIndex, 1)
+    reorderedResources.splice(newIndex, 0, movedResource)
 
     onReorderResources(reorderedResources)
   }
 
   return (
     <>
+      <style>
+        {`
+          .draggable-row:hover {
+            background-color: ${useColorModeValue('gray.50', 'gray.700')};
+          }
+        `}
+      </style>
       <MotionBox
         bg={bg}
         borderWidth="1px"
@@ -128,122 +248,38 @@ const ResourceTable = ({ resources, onDeleteResource, onReorderResources }) => {
           />
         </HStack>
 
-        <DragDropContext onDragEnd={handleDragEnd}>
-          <Droppable droppableId="resources">
-            {(provided) => (
-              <Box overflowX="auto" {...provided.droppableProps} ref={provided.innerRef}>
-                <Table variant="striped" size="md">
-                  <Thead>
-                    <Tr>
-                      <Th>Drag</Th>
-                      <Th>PDF File</Th>
-                      <Th>URL</Th>
-                      <Th>Type</Th>
-                      <Th>Upload Date</Th>
-                      <Th>Uploaded By</Th>
-                      <Th>Actions</Th>
-                    </Tr>
-                  </Thead>
-                  <Tbody>
-                    {paginatedResources.map((resource, index) => {
-                      const fileType = getFileType(resource)
-                      return (
-                        <Draggable key={resource.id} draggableId={resource.id} index={index}>
-                          {(provided) => (
-                            <MotionTr
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              initial={{ opacity: 0, x: -20 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ duration: 0.3, delay: index * 0.1 }}
-                            >
-                              <Td {...provided.dragHandleProps}>
-                                <FiMove />
-                              </Td>
-                              <Td>
-                                {resource.type === 'pdf' && resource.filename ? (
-                                  <Link
-                                    href={resource.fileUrl}
-                                    color="brand.500"
-                                    fontSize="sm"
-                                    onClick={(e) => {
-                                      e.preventDefault()
-                                      handleView(resource)
-                                    }}
-                                    _hover={{ textDecoration: 'underline' }}
-                                  >
-                                    {resource.filename}
-                                  </Link>
-                                ) : (
-                                  <Text fontSize="sm" color="gray.500">-</Text>
-                                )}
-                              </Td>
-                              <Td>
-                                {resource.type === 'url' && resource.url ? (
-                                  <Link
-                                    href={resource.url}
-                                    color="brand.500"
-                                    fontSize="sm"
-                                    onClick={(e) => {
-                                      e.preventDefault()
-                                      handleView(resource)
-                                    }}
-                                    _hover={{ textDecoration: 'underline' }}
-                                  >
-                                    {resource.url}
-                                  </Link>
-                                ) : (
-                                  <Text fontSize="sm" color="gray.500">-</Text>
-                                )}
-                              </Td>
-                              <Td>
-                                <Badge colorScheme={fileType.color} variant="subtle">
-                                  {fileType.extension}
-                                </Badge>
-                              </Td>
-                              <Td>
-                                <Text fontSize="sm">
-                                  {formatDate(resource.timestamp)}
-                                </Text>
-                              </Td>
-                              <Td>
-                                <Text fontSize="sm">
-                                  {resource.uploadedBy}
-                                </Text>
-                              </Td>
-                              <Td>
-                                <HStack spacing={2}>
-                                  <IconButton
-                                    aria-label="View resource"
-                                    icon={<FiEye />}
-                                    size="sm"
-                                    colorScheme="blue"
-                                    variant="ghost"
-                                    onClick={() => handleView(resource)}
-                                    isDisabled={!resource.fileUrl && !resource.url}
-                                  />
-                                  <IconButton
-                                    aria-label="Delete resource"
-                                    icon={<FiTrash2 />}
-                                    size="sm"
-                                    colorScheme="red"
-                                    variant="ghost"
-                                    onClick={() => handleDelete(resource)}
-                                  />
-                                </HStack>
-                              </Td>
-                            </MotionTr>
-                          )}
-                        </Draggable>
-                      )
-                    })}
-                    {provided.placeholder}
-                  </Tbody>
-                </Table>
-              </Box>
-            )}
-          </Droppable>
-        </DragDropContext>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={resources.map(resource => resource.id)} strategy={verticalListSortingStrategy}>
+            <Box overflowX="auto">
+              <Table variant="striped" size="md">
+                <Thead>
+                  <Tr>
+                    <Th>Drag</Th>
+                    <Th>PDF File</Th>
+                    <Th>URL</Th>
+                    <Th>Type</Th>
+                    <Th>Upload Date</Th>
+                    <Th>Uploaded By</Th>
+                    <Th>Actions</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {paginatedResources.map((resource, index) => (
+                    <SortableRow
+                      key={resource.id}
+                      resource={resource}
+                      index={index}
+                      handleView={handleView}
+                      handleDelete={handleDelete}
+                      getFileType={getFileType}
+                      formatDate={formatDate}
+                    />
+                  ))}
+                </Tbody>
+              </Table>
+            </Box>
+          </SortableContext>
+        </DndContext>
 
         {filteredResources.length === 0 && (
           <Box textAlign="center" py={8}>
