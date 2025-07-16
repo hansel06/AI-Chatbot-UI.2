@@ -1,4 +1,4 @@
-import { FiMenu } from 'react-icons/fi' // Replace HamburgerIcon
+import { FiMenu } from 'react-icons/fi'
 import React, { useState, useEffect } from 'react'
 import {
   Box,
@@ -8,7 +8,8 @@ import {
   useDisclosure,
   useBreakpointValue,
   useColorModeValue,
-  Container
+  Container,
+  Text
 } from '@chakra-ui/react'
 import Header from '../components/Layout/Header'
 import ChatInput from '../components/Chat/ChatInput'
@@ -26,6 +27,7 @@ const Chat = () => {
   const { isOpen, onOpen, onClose } = useDisclosure()
   const isMobile = useBreakpointValue({ base: true, md: false })
   const bg = useColorModeValue('gray.50', 'gray.900')
+  const [hasChatStarted, setHasChatStarted] = useState(false) // New state for chat position
 
   useEffect(() => {
     const savedHistory = localStorage.getItem('chatHistory')
@@ -44,6 +46,10 @@ const Chat = () => {
 
     setMessages(prev => [...prev, userMessage])
     setIsLoading(true)
+
+    if (!hasChatStarted) {
+      setHasChatStarted(true) // Set to true on first message
+    }
 
     setTimeout(() => {
       const aiResponse = {
@@ -91,6 +97,7 @@ const Chat = () => {
     }
 
     setMessages([userMessage, aiMessage])
+    setHasChatStarted(true) // Set to true when selecting from history
     onClose()
   }
 
@@ -127,8 +134,14 @@ const Chat = () => {
           <VStack spacing={4} align="stretch" minH="full">
             {messages.length === 0 ? (
               <Box textAlign="center" color="gray.500" mt={20}>
-                <h2 style={{ fontSize: '24px', marginBottom: '16px' }}>Welcome to AI Document Chat</h2>
-                <p>Ask any question about the uploaded documents to get started.</p>
+                <Text
+                  fontSize="4xl"
+                  fontFamily="Staatliches, sans-serif"
+                  fontWeight="bold"
+                  mb={4}
+                >
+                  AskAway
+                </Text>
               </Box>
             ) : (
               messages.map((message) => (
@@ -146,7 +159,7 @@ const Chat = () => {
         </Container>
       </Flex>
 
-      <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} />
+      <ChatInput onSendMessage={handleSendMessage} isLoading={isLoading} hasChatStarted={hasChatStarted} />
       
       <HistoryDrawer
         isOpen={isOpen}

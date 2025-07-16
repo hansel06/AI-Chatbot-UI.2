@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react'
 import { Box, Heading, VStack } from '@chakra-ui/react'
 import ResourceTable from '../components/Admin/ResourceTable'
 import UploadForm from '../components/Admin/UploadForm'
-import { mockResources } from '../mockData'
+import { mockResources } from '../mockdata'
 import { motion } from 'framer-motion'
 
 const MotionBox = motion(Box)

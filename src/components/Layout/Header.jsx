@@ -7,29 +7,31 @@ import {
   Button,
   useColorMode,
   useColorModeValue,
-  Box,
   useBreakpointValue,
-  Link
+  Link as RouterLink
 } from '@chakra-ui/react'
 import { useAuth } from '../../hooks/useAuth'
-import { useNavigate, Link as RouterLink } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 
-const MotionFlex = motion(Flex)
-const MotionIconButton = motion(IconButton)
-const MotionButton = motion(Button)
+const MotionFlex = motion.create(Flex)
+const MotionIconButton = motion.create(IconButton)
+const MotionButton = motion.create(Button)
 
 const Header = () => {
   const { colorMode, toggleColorMode } = useColorMode()
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const bg = useColorModeValue('white', 'gray.800')
-  const borderColor = useColorModeValue('gray.200', 'gray.600')
   const isMobile = useBreakpointValue({ base: true, md: false })
 
-  const handleLogout = () => {
-    logout()
-    navigate('/login')
+  const handleLogout = async () => {
+    await logout()
+    navigate('/login', { replace: true })
+  }
+
+  const handleAdminClick = () => {
+    navigate('/admin')
   }
 
   return (
@@ -41,8 +43,6 @@ const Header = () => {
       right={0}
       zIndex={1000}
       bg={bg}
-      borderBottom="1px"
-      borderColor={borderColor}
       px={4}
       py={3}
       justify="space-between"
@@ -51,22 +51,24 @@ const Header = () => {
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.5 }}
+      style={{
+        transition: 'background-color 0.3s ease',
+      }}
     >
-      <Text fontSize={isMobile ? "lg" : "xl"} fontWeight="bold" color="brand.500">
-        AI Document Chat
+      <Text fontSize={isMobile ? 'lg' : 'xl'} fontWeight="bold" color="brand.500">
+        AskAway
       </Text>
       
       <Flex align="center" gap={2}>
         {user && (
           <Text fontSize="sm" color="gray.500" display={{ base: 'none', md: 'block' }}>
-            {user.email}
+            {user.role === 'admin' ? 'admin' : user.email || 'User'}
           </Text>
         )}
         
         {user?.role === 'admin' && (
           <MotionButton
-            as={RouterLink}
-            to="/admin"
+            onClick={handleAdminClick} // Use onClick instead of RouterLink for direct navigation
             colorScheme="blue"
             size="sm"
             whileHover={{ scale: 1.05 }}

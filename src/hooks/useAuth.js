@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { mockUsers } from '../mockData'
+import { mockUsers } from '../mockdata'
 
 export const useAuth = () => {
   const [user, setUser] = useState(null)
@@ -16,13 +16,12 @@ export const useAuth = () => {
   const login = async (email, password) => {
     setLoading(true)
     
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 2000))
     
     const foundUser = mockUsers.find(u => u.email === email && u.password === password)
     
     if (foundUser) {
-      const userSession = { id: foundUser.id, email: foundUser.email, role: foundUser.role }
+      const userSession = { id: foundUser.id, name: foundUser.name, email: foundUser.email, role: foundUser.role }
       setUser(userSession)
       localStorage.setItem('user', JSON.stringify(userSession))
       setLoading(false)

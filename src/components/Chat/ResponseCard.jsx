@@ -10,7 +10,7 @@ import {
 } from '@chakra-ui/react'
 import { motion } from 'framer-motion'
 
-const MotionBox = motion(Box)
+const MotionBox = motion.create(Box) // Updated to motion.create()
 
 const ResponseCard = ({ query, response, sources, timestamp, isUser }) => {
   const bg = useColorModeValue(
